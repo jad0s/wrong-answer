@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/jad0s/wrong-answer/internal/config"
 )
 
 var ImpostorConn *websocket.Conn
@@ -101,6 +102,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	fmt.Println("Loaded config from:", config.ConfigPath)
 	http.HandleFunc("/ws", handler)
 
 	go func() {

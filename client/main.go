@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/websocket"
+	"github.com/jad0s/wrong-answer-client/internal/config"
 )
 
 type Message struct {
@@ -16,6 +17,7 @@ type Message struct {
 }
 
 func main() {
+	fmt.Println("config file path: ", config.ConfigPath)
 	fmt.Print("Enter your username: ")
 	reader := bufio.NewReader(os.Stdin)
 	username, _ := reader.ReadString('\n')
