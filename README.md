@@ -6,7 +6,7 @@ A local multiplayer deception game in the terminal. One player receives a slight
 
 1. Start the server.
 2. Each player runs the client and joins with a username.
-3. All players receive a question — except one impostor.
+3. All players receive the same question — except one impostor.
 4. Everyone submits a one-word answer.
 5. All answers are revealed.
 6. Everyone votes on who they think the impostor is.
@@ -25,7 +25,7 @@ A local multiplayer deception game in the terminal. One player receives a slight
 ### Build from source (Go 1.21+)
 
 ```bash
-git clone https://github.com/yourname/wrong-answer.git
+git clone https://github.com/jad0s/wrong-answer.git
 cd wrong-answer
 
 # Build the server
