@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -15,6 +16,11 @@ import (
 )
 
 var ImpostorConn *websocket.Conn
+var answerOnce sync.Once
+var voteOnce sync.Once
+
+const VoteDuration = 180 * time.Second //failback for if config doesn't include a correct timer duration
+const AnswerDuration = 20 * time.Second
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
@@ -75,8 +81,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			client.Answered = true
 			if allAnswered() {
 				log.Println("All players answered. proceeding")
-				revealAnswers()
-				vote()
+				answerOnce.Do(func() {
+					revealAnswers()
+					vote()
+				})
+
 			}
 		case "vote":
 			client, ok := clients[conn]
@@ -91,6 +100,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			if allVoted() {
 				log.Println("All players voted. proceeding")
 				mostVoted := getMostVoted()
+				if ImpostorConn == nil {
+					fmt.Println("Error: ImpostorConn is nil")
+					return
+				}
 				impostorUsername := clients[ImpostorConn].Username
 				revealImpostor(impostorUsername, mostVoted)
 			}
@@ -102,7 +115,12 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	fmt.Println("Loaded config from:", config.ConfigPath)
+	err := config.LoadConfig(config.ConfigPath)
+	fmt.Println("Timer is:", config.Config["answer_timer"])
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	http.HandleFunc("/ws", handler)
 
 	go func() {
@@ -118,15 +136,18 @@ func main() {
 
 	port := ":8080"
 	log.Printf("WebSocker server started on ws://localhost%s/ws", port)
-	err := http.ListenAndServe(port, nil)
+	err = http.ListenAndServe(port, nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
 }
 
 func startGameRound() {
+	answerOnce = sync.Once{}
+	voteOnce = sync.Once{}
 	for _, client := range clients {
 		client.Answered = false
+		client.Voted = false
 	}
 	ImpostorConn = pickRandomConn(clients)
 	if ImpostorConn == nil {
@@ -153,6 +174,19 @@ func startGameRound() {
 			conn.WriteJSON(msg)
 		}
 	}
+	duration, err := time.ParseDuration(config.Config["answer_timer"] + "s")
+	if err != nil {
+		log.Println("Invalit timer format:", err)
+		duration = AnswerDuration
+	}
+	startTimer(duration, func() {
+		answerOnce.Do(func() {
+			log.Println("Timer expired. Revealing answers.")
+			revealAnswers()
+			vote()
+		})
+
+	})
 }
 
 func pickRandomConn(clients map[*websocket.Conn]*Client) *websocket.Conn {
@@ -216,6 +250,24 @@ func vote() {
 			log.Println("Error sending vote opening to", client.Username, err)
 		}
 	}
+	duration, err := time.ParseDuration(config.Config["vote_timer"] + "s")
+	if err != nil {
+		log.Println("Invalit timer format:", err)
+		duration = VoteDuration
+	}
+	startTimer(duration, func() {
+		voteOnce.Do(func() {
+			log.Println("Vote time over.")
+			mostVoted := getMostVoted()
+			if ImpostorConn == nil {
+				log.Println("Error: ImpostorConn is nil")
+				return
+			}
+			impostorUsername := clients[ImpostorConn].Username
+			revealImpostor(impostorUsername, mostVoted)
+		})
+
+	})
 }
 
 func allVoted() bool {
@@ -231,15 +283,13 @@ func revealImpostor(impostor string, voted string) {
 	var msg Message
 	if impostor == voted {
 		msg = Message{
-			Type:     "reveal_impostor_success",
-			Impostor: impostor,
-			Voted:    voted,
+			Type:    "reveal_impostor_success",
+			Payload: impostor,
 		}
 	} else {
 		msg = Message{
-			Type:     "reveal_impostor_fail",
-			Impostor: impostor,
-			Voted:    voted,
+			Type:    "reveal_impostor_fail",
+			Payload: impostor,
 		}
 	}
 
@@ -266,4 +316,29 @@ func getMostVoted() string {
 		}
 	}
 	return mostVoted
+}
+
+func startTimer(duration time.Duration, onExpire func()) {
+	go func() {
+		timer := time.NewTimer(duration)
+
+		ticker := time.NewTicker(200 * time.Millisecond)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-timer.C:
+				log.Println("Timer expired.")
+				onExpire()
+				return
+			case <-ticker.C:
+				if allAnswered() {
+					log.Println("All players answered before timer.")
+					timer.Stop()
+					onExpire()
+					return
+				}
+			}
+		}
+	}()
 }

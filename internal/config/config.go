@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"gopkg.in/yaml.v3"
 )
 
 var ConfigPath string
+var Config map[string]string
 
 func init() {
 	configDir, err := os.UserConfigDir()
@@ -27,4 +30,19 @@ auto_update: false
 `)
 		os.WriteFile(ConfigPath, defaultContent, 0644)
 	}
+}
+
+func LoadConfig(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("could not read config file: %w", err)
+	}
+
+	err = yaml.Unmarshal(data, &Config)
+	if err != nil {
+		return fmt.Errorf("could not parse yaml: %w", err)
+	}
+
+	return nil
+
 }
