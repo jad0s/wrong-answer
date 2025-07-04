@@ -92,7 +92,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 				log.Println("All players voted. proceeding")
 				mostVoted := getMostVoted()
 				impostorUsername := clients[ImpostorConn].Username
-				revealImpostor(mostVoted, impostorUsername)
+				revealImpostor(impostorUsername, mostVoted)
 			}
 		default:
 			log.Println("Unknown message type: ", msg.Type)
@@ -231,13 +231,15 @@ func revealImpostor(impostor string, voted string) {
 	var msg Message
 	if impostor == voted {
 		msg = Message{
-			Type:    "reveal_impostor_success",
-			Payload: impostor,
+			Type:     "reveal_impostor_success",
+			Impostor: impostor,
+			Voted:    voted,
 		}
 	} else {
 		msg = Message{
-			Type:    "reveal_impostor_fail",
-			Payload: impostor,
+			Type:     "reveal_impostor_fail",
+			Impostor: impostor,
+			Voted:    voted,
 		}
 	}
 
