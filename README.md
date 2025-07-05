@@ -25,14 +25,11 @@ A local multiplayer deception game in the terminal. One player receives a slight
 ### Build from source (Go 1.21+)
 
 ```bash
-git clone https://github.com/jad0s/wrong-answer.git
+git clone https://github.com/jad0s/wrong-answer
 cd wrong-answer
 
-# Build the server
 go build -o wrong-answer-server ./server
 
-# Build the client
-go build -o wrong-answer-client ./client
 ```
 
 ## Running the Game
@@ -45,46 +42,28 @@ go build -o wrong-answer-client ./client
 
 In the server terminal, type `start` to begin a round after all players have joined.
 
-### Run the client
-
-```bash
-./wrong-answer-client
-```
-
-The client will prompt for a username, then wait for a question.
 
 ## Configuration
 
-The client loads configuration from:
+The server loads configuration from:
 
 ```
-~/.config/wrong-answer/config.yaml
+~/.config/wrong-answer-server/config.yaml
 ```
+All options must be wrapped in quotes.
 
 Example:
 
 ```yaml
-username: jados
-server: ws://localhost:8080/ws
-auto_update: true
+port: "8080"
+answer_timer: "20"
+vote_timer: "180"
 ```
 
-If `auto_update` is enabled, the client will check GitHub for newer releases and offer to update itself.
-
-## Installation (Optional)
-
-### Fedora COPR
-
-```bash
-sudo dnf copr enable jados/wrong-answer
-sudo dnf install wrong-answer-client wrong-answer-server
-```
-
-The COPR build disables auto-update by default.
 
 ## Custom Questions
 
-You can create your own question set in a JSON file. Format:
+You can create your own question set in a JSON file, which is stored in the same directory as config.yaml, under the name "questions.json". Format:
 
 ```json
 [
@@ -103,7 +82,6 @@ The server can be configured to load these instead of hardcoded questions.
 
 ## Notes
 
-- Auto-update is disabled in the Fedora COPR release.
 - The game is local only — for remote games, use a tunnel (e.g. Tailscale, localtunnel, playit.gg).
 - No player limit, but game is designed for 3+ players
 

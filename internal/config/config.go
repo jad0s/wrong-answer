@@ -38,7 +38,6 @@ func init() {
 		defaultContent := []byte(`port: "8080"
 answer_timer: "20"
 vote_timer: "180"
-auto_update: "false"
 `)
 		os.WriteFile(ConfigPath, defaultContent, 0644)
 	}
