@@ -268,6 +268,18 @@ func revealAnswers() {
 
 	payload, _ := json.Marshal(text)
 	for _, client := range clients {
+		if client.Conn == ImpostorConn {
+			rawPayload, err := json.Marshal(currentQuestionPair.Normal)
+			if err != nil {
+				log.Println("Failed to marshal question:", err)
+				continue
+			}
+			client.Conn.WriteJSON(Message{
+				Type:    "reveal_normal_question",
+				Payload: rawPayload,
+			})
+
+		}
 		client.Conn.WriteJSON(Message{
 			Type:    "reveal_answers",
 			Payload: payload,
