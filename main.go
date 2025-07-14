@@ -152,6 +152,8 @@ func main() {
 		log.Fatal("Failed to load questions:", err)
 	}
 
+	fs := http.FileServer(http.Dir("./public"))
+	http.Handle("/", fs)
 	http.HandleFunc("/ws", handler)
 
 	go func() {
@@ -167,10 +169,8 @@ func main() {
 
 	port := ":8080"
 	log.Printf("WebSocket server started on ws://localhost%s/ws", port)
-	err = http.ListenAndServe(port, nil)
-	if err != nil {
-		log.Fatal("ListenAndServe:", err)
-	}
+	log.Fatal(http.ListenAndServe(port, nil))
+
 }
 
 func startGameRound() {
@@ -268,6 +268,18 @@ func revealAnswers() {
 
 	payload, _ := json.Marshal(text)
 	for _, client := range clients {
+		if client.Conn == ImpostorConn {
+			rawPayload, err := json.Marshal(currentQuestionPair.Normal)
+			if err != nil {
+				log.Println("Failed to marshal question:", err)
+				continue
+			}
+			client.Conn.WriteJSON(Message{
+				Type:    "reveal_normal_question",
+				Payload: rawPayload,
+			})
+
+		}
 		client.Conn.WriteJSON(Message{
 			Type:    "reveal_answers",
 			Payload: payload,
