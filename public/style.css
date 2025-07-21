@@ -1,0 +1,38 @@
+body {
+  font-family: sans-serif;
+  background-color: #111;
+  color: #eee;
+  padding: 2rem;
+  max-width: 600px;
+  margin: auto;
+}
+
+input, button {
+  padding: 0.5rem;
+  font-size: 1rem;
+  margin: 0.25rem 0;
+}
+
+.hidden {
+  display: none;
+}
+
+#message-box {
+  background-color: #333;
+  padding: 1rem;
+  margin-top: 1rem;
+  border-radius: 8px;
+  font-weight: bold;
+}
+
+#answers, #result {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #222;
+  border-left: 4px solid #888;
+  border-radius: 6px;
+}
+
+form {
+  margin-top: 1rem;
+}

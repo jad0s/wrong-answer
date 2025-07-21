@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/jad0s/wrong-answer/internal/config"
+	"github.com/quic-go/quic-go/http3"
 )
 
 var ImpostorConn *websocket.Conn
@@ -26,6 +28,9 @@ const AnswerDuration = 20 * time.Second
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
 }
 
 type Client struct {
@@ -152,7 +157,9 @@ func main() {
 		log.Fatal("Failed to load questions:", err)
 	}
 
-	http.HandleFunc("/ws", handler)
+	mux := http.NewServeMux()
+	mux.Handle("/ws", http.HandlerFunc(handler))
+	mux.Handle("/", http.FileServer(http.Dir("./public")))
 
 	go func() {
 		scanner := bufio.NewScanner(os.Stdin)
@@ -167,10 +174,20 @@ func main() {
 
 	port := ":8080"
 	log.Printf("WebSocket server started on ws://localhost%s/ws", port)
-	err = http.ListenAndServe(port, nil)
-	if err != nil {
-		log.Fatal("ListenAndServe:", err)
+	go func() {
+		log.Fatal(http.ListenAndServe(port, nil))
+	}()
+
+	log.Println("QUIC (HTTP/3) listening on udp://:443")
+	if err := http3.ListenAndServeTLS(
+		":443",
+		"cert.pem", // your cert file
+		"key.pem",  // your key file
+		mux,
+	); err != nil {
+		log.Fatal(err)
 	}
+
 }
 
 func startGameRound() {
@@ -390,4 +407,15 @@ func startTimer(duration time.Duration, shouldExpireEarly func() bool, onExpire 
 			}
 		}
 	}()
+}
+
+func generateTLSConfig() *tls.Config {
+	cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
+	if err != nil {
+		log.Fatal("failed to load certs:", err)
+	}
+	return &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		NextProtos:   []string{"h3"},
+	}
 }
