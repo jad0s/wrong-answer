@@ -25,7 +25,8 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/ws", http.HandlerFunc(server.Handler))
+	s := &server.Server{Lobbies: make(map[string]*server.Lobby)}
+	mux.Handle("/ws", http.HandlerFunc(s.Handler))
 	mux.Handle("/", http.FileServer(http.Dir("./public")))
 
 	go func() {

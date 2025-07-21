@@ -1,7 +1,9 @@
 package server
 
 import (
+	"crypto/rand"
 	"encoding/json"
+	"math/big"
 	"net/http"
 	"sync"
 	"time"
@@ -9,6 +11,9 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/jad0s/wrong-answer/internal/config"
 )
+
+const idLength = 6
+const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 type Server struct {
 	Lobbies map[string]*Lobby
@@ -18,6 +23,8 @@ type Server struct {
 type Lobby struct {
 	ID      string
 	Clients map[*websocket.Conn]*Client
+	Mu      sync.RWMutex
+	Leader  *Client
 }
 
 type Client struct {
@@ -60,3 +67,45 @@ var clients = map[*websocket.Conn]*Client{}
 var clientsMu sync.Mutex
 
 var currentQuestionPair config.QuestionPair
+
+func (s *Server) JoinLobby(id string, conn *websocket.Conn, username string) *Client {
+	s.Mu.Lock()
+	lobby, exists := s.Lobbies[id]
+	if !exists {
+		lobby = &Lobby{ID: id, Clients: make(map[*websocket.Conn]*Client)}
+		s.Lobbies[id] = lobby
+	}
+	s.Mu.Unlock()
+
+	client := &Client{Conn: conn, Username: username, Lobby: lobby}
+
+	lobby.Mu.Lock()
+	lobby.Clients[conn] = client
+	if !exists {
+		lobby.Leader = client
+	}
+	lobby.Mu.Unlock()
+
+	return client
+}
+
+func GenerateLobbyID() string {
+	id := make([]byte, idLength)
+	for i := range id {
+		n, _ := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		id[i] = charset[n.Int64()]
+	}
+	return string(id)
+}
+
+func (s *Server) CreateLobbyID() string {
+	for {
+		id := GenerateLobbyID()
+		s.Mu.RLock()
+		_, exists := s.Lobbies[id]
+		s.Mu.RUnlock()
+		if !exists {
+			return id
+		}
+	}
+}

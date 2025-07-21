@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func Handler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) Handler(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
@@ -32,16 +32,55 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		switch msg.Type {
-		case "set_username":
-			var username string
-			if err := json.Unmarshal(msg.Payload, &username); err != nil {
-				log.Println("Invalid username payload:", err)
+		case "create_lobby":
+			var req struct {
+				Username string `json:"username"`
+			}
+			if err := json.Unmarshal(msg.Payload, &req); err != nil {
+				log.Println("create_lobby: invalid payload:", err)
 				break
 			}
-			clientsMu.Lock()
-			clients[conn] = &Client{Conn: conn, Username: username}
-			clientsMu.Unlock()
-			log.Println("User joined:", username)
+			lobbyID := s.CreateLobbyID()
+			_ = s.JoinLobby(lobbyID, conn, req.Username)
+
+			resp := struct {
+				LobbyID string `json:"lobby_id"`
+			}{LobbyID: lobbyID}
+			data, _ := json.Marshal(resp)
+			conn.WriteJSON(Message{
+				Type:    "lobby_created",
+				Payload: data,
+			})
+
+			log.Printf("Created lobby %s for user %s\n", lobbyID, req.Username)
+
+		case "join_lobby":
+			var req struct {
+				Username string `json:"username"`
+				LobbyID  string `json:"lobby_id`
+			}
+			if err := json.Unmarshal(msg.Payload, &req); err != nil {
+				log.Println("join_lobby: invalid payload:", err)
+				break
+			}
+			client := s.JoinLobby(req.LobbyID, conn, req.Username)
+			if client == nil {
+				resp := struct {
+					Error string `json:"error"`
+				}{Error: "lobby not found"}
+				data, _ := json.Marshal(resp)
+				conn.WriteJSON(Message{
+					Type:    "join_failed",
+					Payload: data,
+				})
+				break
+			}
+
+			conn.WriteJSON(Message{
+				Type: "lobby_joined",
+			})
+
+			log.Printf("User %s joined lobby %s\n", req.Username, req.LobbyID)
 
 		case "submit_answer":
 			var answer string
