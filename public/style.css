@@ -36,3 +36,10 @@ input, button {
 form {
   margin-top: 1rem;
 }
+/* style.css */
+.hidden { display: none; }
+#lobby-controls, #game { margin: 1em; }
+button { margin-left: .5em; }
+#message-box { margin-bottom: 1em; font-weight: bold; }
+#answers, #result { margin-top: 1em; white-space: pre-wrap; }
+

@@ -81,7 +81,9 @@ func (s *Server) Handler(w http.ResponseWriter, r *http.Request) {
 			})
 
 			log.Printf("User %s joined lobby %s\n", req.Username, req.LobbyID)
-
+		case "start_game":
+			client, _ := clients[conn]
+			client.Lobby.StartGameRound()
 		case "submit_answer":
 			var answer string
 			if err := json.Unmarshal(msg.Payload, &answer); err != nil {

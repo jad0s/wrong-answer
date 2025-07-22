@@ -35,7 +35,6 @@ func main() {
 			cmd := scanner.Text()
 			if cmd == "start" {
 				log.Println("Game starting")
-				server.StartGameRound()
 			}
 		}
 	}()
@@ -43,17 +42,24 @@ func main() {
 	port := ":8080"
 	log.Printf("WebSocket server started on ws://localhost%s/ws", port)
 	go func() {
-		log.Fatal(http.ListenAndServe(port, nil))
+		log.Fatal(http.ListenAndServe(":8080", mux))
+	}()
+
+	go func() {
+		log.Printf("TLS server on https://localhost:443 and wss://localhost:443/ws\n")
+		srv := &http.Server{
+			Addr:    ":443",
+			Handler: mux,
+		}
+		log.Fatal(srv.ListenAndServeTLS("cert.pem", "key.pem"))
+
 	}()
 
 	log.Println("QUIC (HTTP/3) listening on udp://:443")
-	if err := http3.ListenAndServeTLS(
+	log.Fatal(http3.ListenAndServeQUIC(
 		":443",
-		"cert.pem", // your cert file
-		"key.pem",  // your key file
+		"cert.pem",
+		"key.pem",
 		mux,
-	); err != nil {
-		log.Fatal(err)
-	}
-
+	))
 }

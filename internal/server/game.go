@@ -13,7 +13,7 @@ import (
 	"github.com/jad0s/wrong-answer/internal/config"
 )
 
-func StartGameRound() {
+func (l *Lobby) StartGameRound() {
 	answerOnce = sync.Once{}
 	voteOnce = sync.Once{}
 
@@ -25,7 +25,7 @@ func StartGameRound() {
 		return
 	}
 
-	for _, client := range clients {
+	for _, client := range l.Clients {
 		client.Answered = false
 		client.Voted = false
 	}
@@ -35,10 +35,10 @@ func StartGameRound() {
 		return
 	}
 
-	ImpostorConn = pickRandomConn(clients)
+	ImpostorConn = pickRandomConn(l.Clients)
 	currentQuestionPair = config.Questions[rand.Intn(len(config.Questions))]
 
-	for conn, client := range clients {
+	for conn, client := range l.Clients {
 		var questionText string
 		if conn == ImpostorConn {
 			questionText = fmt.Sprintf("You're the impostor. Your question is: %s", currentQuestionPair.Impostor)
