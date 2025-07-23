@@ -5,10 +5,10 @@ import (
 	"time"
 )
 
-func allAnswered() bool {
+func (l *Lobby) allAnswered() bool {
 	clientsMu.Lock()
 	defer clientsMu.Unlock()
-	for _, client := range clients {
+	for _, client := range l.Clients {
 		if !client.Answered {
 			return false
 		}
@@ -16,10 +16,10 @@ func allAnswered() bool {
 	return true
 }
 
-func allVoted() bool {
+func (l *Lobby) allVoted() bool {
 	clientsMu.Lock()
 	defer clientsMu.Unlock()
-	for _, client := range clients {
+	for _, client := range l.Clients {
 		if !client.Voted {
 			return false
 		}

@@ -20,8 +20,8 @@ func (l *Lobby) StartGameRound() {
 	clientsMu.Lock()
 	defer clientsMu.Unlock()
 
-	if len(clients) == 0 {
-		log.Println("No players connected.")
+	if len(l.Clients) == 0 {
+		log.Println("No players connected in lobby:", l.ID)
 		return
 	}
 
@@ -31,20 +31,20 @@ func (l *Lobby) StartGameRound() {
 	}
 
 	if len(config.Questions) == 0 {
-		log.Println("No questions loaded. Cannot start game.")
+		log.Println("No questions loaded. Cannot start game in lobby:", l.ID)
 		return
 	}
 
-	ImpostorConn = pickRandomConn(l.Clients)
-	currentQuestionPair = config.Questions[rand.Intn(len(config.Questions))]
+	l.ImpostorConn = l.pickRandomConn(l.Clients)
+	l.currentQuestionPair = config.Questions[rand.Intn(len(config.Questions))]
 
 	for conn, client := range l.Clients {
 		var questionText string
-		if conn == ImpostorConn {
-			questionText = fmt.Sprintf("You're the impostor. Your question is: %s", currentQuestionPair.Impostor)
-			log.Printf("Impostor is: %s\n", client.Username)
+		if conn == l.ImpostorConn {
+			questionText = fmt.Sprintf("You're the impostor. Your question is: %s", l.currentQuestionPair.Impostor)
+			log.Printf("Impostor is: %s in lobby: %s\n", client.Username, l.ID)
 		} else {
-			questionText = fmt.Sprintf("Your question is: %s", currentQuestionPair.Normal)
+			questionText = fmt.Sprintf("Your question is: %s", l.currentQuestionPair.Normal)
 		}
 		payload, _ := json.Marshal(questionText)
 		conn.WriteJSON(Message{
@@ -55,21 +55,21 @@ func (l *Lobby) StartGameRound() {
 
 	duration, err := time.ParseDuration(config.Config["answer_timer"] + "s")
 	if err != nil {
-		log.Println("Invalid timer format:", err)
+		log.Printf("Invalid timer format:%e in lobby: %s\n", err, l.ID)
 		duration = AnswerDuration
 	}
-	startTimer(duration, allAnswered, func() {
+	startTimer(duration, l.allAnswered, func() {
 		answerOnce.Do(func() {
-			log.Println("Answer timer expired.")
-			revealAnswers()
-			vote()
+			log.Println("Answer timer expired in lobby:", l.ID)
+			l.revealAnswers()
+			l.vote()
 		})
 	})
 }
 
-func vote() {
+func (l *Lobby) vote() {
 	clientsMu.Lock()
-	for _, client := range clients {
+	for _, client := range l.Clients {
 		client.Voted = false
 		payload, _ := json.Marshal("open")
 		client.Conn.WriteJSON(Message{
@@ -84,20 +84,20 @@ func vote() {
 		log.Println("Invalid vote timer format:", err)
 		duration = VoteDuration
 	}
-	startTimer(duration, allVoted, func() {
+	startTimer(duration, l.allVoted, func() {
 		voteOnce.Do(func() {
 			log.Println("Vote timer expired.")
-			revealImpostor(getClientUsername(ImpostorConn), getMostVoted(), currentQuestionPair.Impostor)
+			l.revealImpostor(l.getClientUsername(l.ImpostorConn), l.getMostVoted(), l.currentQuestionPair.Impostor)
 		})
 	})
 }
 
-func revealAnswers() {
+func (l *Lobby) revealAnswers() {
 	clientsMu.Lock()
 	defer clientsMu.Unlock()
 
 	answers := make(map[string]string)
-	for _, client := range clients {
+	for _, client := range l.Clients {
 		answers[client.Username] = client.Answer
 	}
 
@@ -107,9 +107,9 @@ func revealAnswers() {
 	}
 
 	payload, _ := json.Marshal(text)
-	for _, client := range clients {
-		if client.Conn == ImpostorConn {
-			rawPayload, err := json.Marshal(currentQuestionPair.Normal)
+	for _, client := range l.Clients {
+		if client.Conn == l.ImpostorConn {
+			rawPayload, err := json.Marshal(l.currentQuestionPair.Normal)
 			if err != nil {
 				log.Println("Failed to marshal question:", err)
 				continue
@@ -127,7 +127,7 @@ func revealAnswers() {
 	}
 }
 
-func revealImpostor(impostor, voted, impostorQuestion string) {
+func (l *Lobby) revealImpostor(impostor, voted, impostorQuestion string) {
 	payloadStruct := RevealImpostorPayload{
 		Impostor:         impostor,
 		MostVoted:        voted,
@@ -136,7 +136,7 @@ func revealImpostor(impostor, voted, impostorQuestion string) {
 	payload, _ := json.Marshal(payloadStruct)
 
 	clientsMu.Lock()
-	for _, client := range clients {
+	for _, client := range l.Clients {
 		client.Conn.WriteJSON(Message{
 			Type:    "reveal_impostor",
 			Payload: payload,
@@ -145,7 +145,7 @@ func revealImpostor(impostor, voted, impostorQuestion string) {
 	clientsMu.Unlock()
 }
 
-func pickRandomConn(clients map[*websocket.Conn]*Client) *websocket.Conn {
+func (l *Lobby) pickRandomConn(clients map[*websocket.Conn]*Client) *websocket.Conn {
 	if len(clients) == 0 {
 		return nil
 	}
@@ -157,21 +157,21 @@ func pickRandomConn(clients map[*websocket.Conn]*Client) *websocket.Conn {
 	return conns[rand.Intn(len(conns))]
 }
 
-func getClientUsername(conn *websocket.Conn) string {
+func (l *Lobby) getClientUsername(conn *websocket.Conn) string {
 	clientsMu.Lock()
 	defer clientsMu.Unlock()
-	if client, ok := clients[conn]; ok {
+	if client, ok := l.Clients[conn]; ok {
 		return client.Username
 	}
 	return "Unknown"
 }
 
-func getMostVoted() string {
+func (l *Lobby) getMostVoted() string {
 	votesCount := make(map[string]int)
 
 	clientsMu.Lock()
 	defer clientsMu.Unlock()
-	for _, client := range clients {
+	for _, client := range l.Clients {
 		votesCount[strings.TrimSpace(client.Vote)]++
 	}
 

@@ -16,7 +16,8 @@ func (s *Server) Handler(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		log.Println("Connection closed")
 		clientsMu.Lock()
-		delete(clients, conn)
+		_, lobby := s.FindClientByConn(conn)
+		delete(lobby.Clients, conn)
 		clientsMu.Unlock()
 		conn.Close()
 	}()
@@ -82,8 +83,12 @@ func (s *Server) Handler(w http.ResponseWriter, r *http.Request) {
 
 			log.Printf("User %s joined lobby %s\n", req.Username, req.LobbyID)
 		case "start_game":
-			client, _ := clients[conn]
-			client.Lobby.StartGameRound()
+			client, lobby := s.FindClientByConn(conn)
+			if client != nil && lobby != nil {
+				lobby.StartGameRound()
+			} else {
+				log.Println("Client not found for given connection")
+			}
 		case "submit_answer":
 			var answer string
 			if err := json.Unmarshal(msg.Payload, &answer); err != nil {
@@ -91,19 +96,23 @@ func (s *Server) Handler(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			clientsMu.Lock()
-			client, ok := clients[conn]
-			if ok {
-				client.Answer = answer
-				client.Answered = true
-				log.Printf("%s answered: %s\n", client.Username, answer)
+			client, lobby := s.FindClientByConn(conn)
+			if client == nil || lobby == nil {
+				log.Println("Client not found for given connection")
+				break
 			}
+
+			client.Answer = answer
+			client.Answered = true
+			log.Printf("%s answered: %s\n", client.Username, answer)
+
 			clientsMu.Unlock()
 
-			if allAnswered() {
+			if lobby.allAnswered() {
 				log.Println("All players answered. Proceeding.")
 				answerOnce.Do(func() {
-					revealAnswers()
-					vote()
+					lobby.revealAnswers()
+					lobby.vote()
 				})
 			}
 
@@ -114,18 +123,22 @@ func (s *Server) Handler(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			clientsMu.Lock()
-			client, ok := clients[conn]
-			if ok {
-				client.Vote = strings.TrimSpace(vote)
-				client.Voted = true
-				log.Printf("%s voted for %s\n", client.Username, client.Vote)
+			client, lobby := s.FindClientByConn(conn)
+			if client == nil || lobby == nil {
+				log.Println("Client not found for given connection")
+				break
 			}
+
+			client.Vote = strings.TrimSpace(vote)
+			client.Voted = true
+			log.Printf("%s voted for %s\n", client.Username, client.Vote)
+
 			clientsMu.Unlock()
 
-			if allVoted() {
+			if lobby.allVoted() {
 				log.Println("All players voted. Proceeding.")
 				voteOnce.Do(func() {
-					revealImpostor(getClientUsername(ImpostorConn), getMostVoted(), currentQuestionPair.Impostor)
+					lobby.revealImpostor(lobby.getClientUsername(lobby.ImpostorConn), lobby.getMostVoted(), lobby.currentQuestionPair.Impostor)
 				})
 			}
 

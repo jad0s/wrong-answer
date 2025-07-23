@@ -21,10 +21,12 @@ type Server struct {
 }
 
 type Lobby struct {
-	ID      string
-	Clients map[*websocket.Conn]*Client
-	Mu      sync.RWMutex
-	Leader  *Client
+	ID                  string
+	Clients             map[*websocket.Conn]*Client
+	ImpostorConn        *websocket.Conn
+	currentQuestionPair config.QuestionPair
+	Mu                  sync.RWMutex
+	Leader              *Client
 }
 
 type Client struct {
@@ -37,7 +39,6 @@ type Client struct {
 	Vote     string
 }
 
-var ImpostorConn *websocket.Conn
 var answerOnce sync.Once
 var voteOnce sync.Once
 
@@ -63,10 +64,7 @@ type RevealImpostorPayload struct {
 	ImpostorQuestion string `json:"impostor_question"`
 }
 
-var clients = map[*websocket.Conn]*Client{}
 var clientsMu sync.Mutex
-
-var currentQuestionPair config.QuestionPair
 
 func (s *Server) JoinLobby(id string, conn *websocket.Conn, username string) *Client {
 	s.Mu.Lock()
@@ -108,4 +106,13 @@ func (s *Server) CreateLobbyID() string {
 			return id
 		}
 	}
+}
+
+func (s *Server) FindClientByConn(conn *websocket.Conn) (*Client, *Lobby) {
+	for _, lobby := range s.Lobbies {
+		if client, ok := lobby.Clients[conn]; ok {
+			return client, lobby
+		}
+	}
+	return nil, nil
 }
