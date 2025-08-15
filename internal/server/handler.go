@@ -58,12 +58,13 @@ func (s *Server) Handler(w http.ResponseWriter, r *http.Request) {
 		case "join_lobby":
 			var req struct {
 				Username string `json:"username"`
-				LobbyID  string `json:"lobby_id`
+				LobbyID  string `json:"lobby_id"`
 			}
 			if err := json.Unmarshal(msg.Payload, &req); err != nil {
 				log.Println("join_lobby: invalid payload:", err)
 				break
 			}
+
 			client := s.JoinLobby(req.LobbyID, conn, req.Username)
 			if client == nil {
 				resp := struct {
