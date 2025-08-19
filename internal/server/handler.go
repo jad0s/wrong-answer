@@ -31,6 +31,7 @@ func (s *Server) Handler(w http.ResponseWriter, r *http.Request) {
 			log.Println("ReadJSON: ", err)
 			break
 		}
+		//fmt.Println("raw:", msg)
 
 		switch msg.Type {
 		case "create_lobby":
@@ -42,7 +43,10 @@ func (s *Server) Handler(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			lobbyID := s.CreateLobbyID()
-			_ = s.JoinLobby(lobbyID, conn, req.Username)
+			if _, err = s.JoinLobby(lobbyID, conn, req.Username); err != nil {
+				log.Println("create_lobby: Couldn't create lobby:", err)
+				break
+			}
 
 			resp := struct {
 				LobbyID string `json:"lobby_id"`
@@ -65,7 +69,10 @@ func (s *Server) Handler(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 
-			client := s.JoinLobby(req.LobbyID, conn, req.Username)
+			client, err := s.JoinLobby(req.LobbyID, conn, req.Username)
+			if err != nil {
+				log.Println("join_lobby: Couldn't join lobby:", err)
+			}
 			if client == nil {
 				resp := struct {
 					Error string `json:"error"`

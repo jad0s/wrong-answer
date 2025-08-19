@@ -14,10 +14,11 @@ import (
 )
 
 func (l *Lobby) StartGameRound() {
-	answerOnce = sync.Once{}
+	answerOnce = sync.Once{} //resets answerOnce. Ensures whatever function is passed into answerOnce.Do is only executed once, before answerOnce is reset again like it is here.
+	// This protects certain actions from being executed multiple times by goroutines.
 	voteOnce = sync.Once{}
 
-	clientsMu.Lock()
+	clientsMu.Lock() //mutex lock, prevents race conditions. It ensures no other goroutine mutates the clients map, until clientsMu.Unlock() is called, after StartGameRound() is finished.
 	defer clientsMu.Unlock()
 
 	if len(l.Clients) == 0 {
@@ -25,7 +26,7 @@ func (l *Lobby) StartGameRound() {
 		return
 	}
 
-	for _, client := range l.Clients {
+	for _, client := range l.Clients { //reset all Voted and Answered switches before new round starts, because they are going to be set to true from previous rounds.
 		client.Answered = false
 		client.Voted = false
 	}
@@ -35,6 +36,7 @@ func (l *Lobby) StartGameRound() {
 		return
 	}
 
+	//pick random connection to be impostor, and pick a question pair.
 	l.ImpostorConn = l.pickRandomConn(l.Clients)
 	l.currentQuestionPair = config.Questions[rand.Intn(len(config.Questions))]
 
@@ -47,10 +49,12 @@ func (l *Lobby) StartGameRound() {
 			questionText = fmt.Sprintf("Your question is: %s", l.currentQuestionPair.Normal)
 		}
 		payload, _ := json.Marshal(questionText)
-		conn.WriteJSON(Message{
+		if err := conn.WriteJSON(Message{
 			Type:    "question",
 			Payload: payload,
-		})
+		}); err != nil {
+			log.Printf("Couldn't send questions in lobby %s:\n", l.ID, err)
+		}
 	}
 
 	duration, err := time.ParseDuration(config.Config["answer_timer"] + "s")

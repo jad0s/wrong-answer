@@ -3,6 +3,8 @@ package server
 import (
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
+	"log"
 	"math/big"
 	"net/http"
 	"sync"
@@ -66,8 +68,20 @@ type RevealImpostorPayload struct {
 
 var clientsMu sync.Mutex
 
-func (s *Server) JoinLobby(id string, conn *websocket.Conn, username string) *Client {
+func (s *Server) JoinLobby(id string, conn *websocket.Conn, username string) (*Client, error) {
 	s.Mu.Lock()
+
+	//a connection only becomes a client once it joins a lobby, according to the FindClientByConn function.
+	//Therefore, if it returns a non-nil value, the connection which tried to join/create a lobby is already a part of another lobby, so we deny joining/creation.
+	if client, _ := s.FindClientByConn(conn); client != nil {
+		if err := conn.WriteJSON(Message{
+			Type:    "join_failed",
+			Payload: json.RawMessage(`"You are already in a lobby"`),
+		}); err != nil {
+			log.Println("Failed to send JSON:", err)
+		}
+		return nil, fmt.Errorf("Connection is already in a lobby.")
+	}
 	lobby, exists := s.Lobbies[id]
 	if !exists {
 		lobby = &Lobby{ID: id, Clients: make(map[*websocket.Conn]*Client)}
@@ -84,7 +98,7 @@ func (s *Server) JoinLobby(id string, conn *websocket.Conn, username string) *Cl
 	}
 	lobby.Mu.Unlock()
 
-	return client
+	return client, nil
 }
 
 func GenerateLobbyID() string {
