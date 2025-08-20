@@ -70,7 +70,7 @@ var clientsMu sync.Mutex
 
 func (s *Server) JoinLobby(id string, conn *websocket.Conn, username string) (*Client, error) {
 	s.Mu.Lock()
-
+	defer s.Mu.Unlock()
 	//a connection only becomes a client once it joins a lobby, according to the FindClientByConn function.
 	//Therefore, if it returns a non-nil value, the connection which tried to join/create a lobby is already a part of another lobby, so we deny joining/creation.
 	if client, _ := s.FindClientByConn(conn); client != nil {
@@ -80,6 +80,7 @@ func (s *Server) JoinLobby(id string, conn *websocket.Conn, username string) (*C
 		}); err != nil {
 			log.Println("Failed to send JSON:", err)
 		}
+
 		return nil, fmt.Errorf("Connection is already in a lobby.")
 	}
 	lobby, exists := s.Lobbies[id]
@@ -87,16 +88,15 @@ func (s *Server) JoinLobby(id string, conn *websocket.Conn, username string) (*C
 		lobby = &Lobby{ID: id, Clients: make(map[*websocket.Conn]*Client)}
 		s.Lobbies[id] = lobby
 	}
-	s.Mu.Unlock()
 
 	client := &Client{Conn: conn, Username: username, Lobby: lobby}
 
 	lobby.Mu.Lock()
+	defer lobby.Mu.Unlock()
 	lobby.Clients[conn] = client
 	if !exists {
 		lobby.Leader = client
 	}
-	lobby.Mu.Unlock()
 
 	return client, nil
 }
@@ -114,8 +114,8 @@ func (s *Server) CreateLobbyID() string {
 	for {
 		id := GenerateLobbyID()
 		s.Mu.RLock()
+		defer s.Mu.RUnlock()
 		_, exists := s.Lobbies[id]
-		s.Mu.RUnlock()
 		if !exists {
 			return id
 		}

@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -17,7 +18,9 @@ func (s *Server) Handler(w http.ResponseWriter, r *http.Request) {
 		log.Println("Connection closed")
 		clientsMu.Lock()
 		_, lobby := s.FindClientByConn(conn)
-		delete(lobby.Clients, conn)
+		if lobby != nil {
+			delete(lobby.Clients, conn)
+		}
 		clientsMu.Unlock()
 		conn.Close()
 	}()
@@ -31,7 +34,8 @@ func (s *Server) Handler(w http.ResponseWriter, r *http.Request) {
 			log.Println("ReadJSON: ", err)
 			break
 		}
-		//fmt.Println("raw:", msg)
+		//DEBUG
+		fmt.Println("raw:", msg)
 
 		switch msg.Type {
 		case "create_lobby":

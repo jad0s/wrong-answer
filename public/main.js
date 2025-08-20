@@ -148,7 +148,9 @@ ws.onmessage = (evt) => {
         console.error("Invalid JSON:", evt.data);
         return;
     }
+    console.log(msg)
     switch (msg.type) {
+        
         // Lobby lifecycle
         case "lobby_created": {
             // payload: { lobby_id: string }
