@@ -2,22 +2,14 @@
 
 A local multiplayer deception game in the terminal. One player receives a slightly different question — and everyone has to figure out who it was based on their answer.
 
-## How to Play
-
-1. Start the server.
-2. Each player runs the client and joins with a username.
-3. All players receive the same question — except one impostor.
-4. Everyone submits a one-word answer.
-5. All answers are revealed.
-6. Everyone votes on who they think the impostor is.
-7. The game reveals whether the vote was correct.
+The game is currently in a very early state, and not ready for production. I'm currently focusing on the server side, the frontend is AI generated and wonky.
+Once I feel the server is in a good enough place, I will rewrite the frontend myself. 
 
 ## Features
 
 - WebSocket server for real-time multiplayer
-- Terminal client with minimal dependencies
+- Web server serving the client interface
 - Round-based question → answer → vote → reveal flow
-- Auto-update system (optional, via config)
 - Configurable questions, usernames, and server URLs
 
 ## Building
@@ -28,7 +20,7 @@ A local multiplayer deception game in the terminal. One player receives a slight
 git clone https://github.com/jad0s/wrong-answer
 cd wrong-answer
 
-go build -o wrong-answer-server ./server
+go build
 
 ```
 
@@ -37,10 +29,9 @@ go build -o wrong-answer-server ./server
 ### Start the server
 
 ```bash
-./wrong-answer-server
+./wrong-answer
 ```
 
-In the server terminal, type `start` to begin a round after all players have joined.
 
 
 ## Configuration
@@ -82,7 +73,6 @@ The server can be configured to load these instead of hardcoded questions.
 
 ## Notes
 
-- The game is local only — for remote games, use a tunnel (e.g. Tailscale, localtunnel, playit.gg).
 - No player limit, but game is designed for 3+ players
 
 ## License
