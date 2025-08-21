@@ -27,6 +27,11 @@ go build
 ## Running the Game
 
 ### Start the server
+First, you need to either get a proper key.pem and cert.pem, or generate a self-signed one, with something like this:
+```bash
+openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
+```
+After that, you can run the game. Keep in mind it needs elevated permissions to bind to port 443 (like sudo on linux, or run as root).
 
 ```bash
 ./wrong-answer
