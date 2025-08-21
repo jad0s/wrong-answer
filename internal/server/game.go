@@ -21,8 +21,8 @@ func (l *Lobby) StartGameRound() {
 	clientsMu.Lock() //mutex lock, prevents race conditions. It ensures no other goroutine mutates the clients map, until clientsMu.Unlock() is called, after StartGameRound() is finished.
 	defer clientsMu.Unlock()
 
-	if len(l.Clients) == 0 {
-		log.Println("No players connected in lobby:", l.ID)
+	if len(l.Clients) <= 1 {
+		log.Printf("Not enough players (%d) connected in lobby:%s\n", len(l.Clients), l.ID)
 		return
 	}
 
@@ -53,7 +53,7 @@ func (l *Lobby) StartGameRound() {
 			Type:    "question",
 			Payload: payload,
 		}); err != nil {
-			log.Printf("Couldn't send questions in lobby %s:\n", l.ID, err)
+			log.Printf("Couldn't send questions in lobby %s:\n%s", l.ID, err)
 		}
 	}
 
@@ -74,7 +74,6 @@ func (l *Lobby) StartGameRound() {
 func (l *Lobby) vote() {
 	clientsMu.Lock()
 	for _, client := range l.Clients {
-		client.Voted = false
 		payload, _ := json.Marshal("open")
 		client.Conn.WriteJSON(Message{
 			Type:    "vote",

@@ -39,12 +39,6 @@ func main() {
 		}
 	}()
 
-	port := ":8080"
-	log.Printf("WebSocket server started on ws://localhost%s/ws", port)
-	go func() {
-		log.Fatal(http.ListenAndServe(":8080", mux))
-	}()
-
 	go func() {
 		log.Printf("TLS server on https://localhost:443 and wss://localhost:443/ws\n")
 		srv := &http.Server{

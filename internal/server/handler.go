@@ -96,11 +96,23 @@ func (s *Server) Handler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("User %s joined lobby %s\n", req.Username, req.LobbyID)
 		case "start_game":
 			client, lobby := s.FindClientByConn(conn)
-			if client != nil && lobby != nil {
-				lobby.StartGameRound()
-			} else {
+			if client == nil || lobby == nil {
 				log.Println("Client not found for given connection")
+				break
 			}
+			if client != lobby.Leader {
+				if err := conn.WriteJSON(Message{
+					Type:    "error",
+					Payload: json.RawMessage(`"Only the leader can start the game"`),
+				}); err != nil {
+					log.Println("Couldn't send JSON")
+					break
+				}
+				log.Println("Non-leader client sent start_game in lobby:", lobby.ID)
+				break
+			}
+			lobby.StartGameRound()
+
 		case "submit_answer":
 			var answer string
 			if err := json.Unmarshal(msg.Payload, &answer); err != nil {
