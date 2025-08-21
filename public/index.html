@@ -9,28 +9,38 @@
 <body>
   <h1>Wrong Answer</h1>
 
-  <form id="username-form">
-    <input id="username" placeholder="Enter your name" required />
-    <button type="submit">Join Game</button>
+  <!-- index.html -->
+<form id="username-form">
+  <input id="username" placeholder="Your name" required />
+  <button type="submit">Enter</button>
+</form>
+
+<div id="lobby-controls" class="hidden">
+  <button id="btn-create">Create Lobby</button>
+  <input id="lobby-id" placeholder="Lobby Code" maxlength="6" />
+  <button id="btn-join">Join Lobby</button>
+  <button id="btn-start" class="hidden">Start Game</button>
+</div>
+
+<div id="game" class="hidden">
+  <div id="message-box"></div>
+  <div id="question"></div>
+
+  <form id="answer-form" class="hidden">
+    <input id="answer" placeholder="Your answer" required />
+    <button type="submit">Submit</button>
   </form>
 
-  <div id="game" class="hidden">
-    <div id="question"></div>
+  <div id="answers"></div>
 
-    <form id="answer-form" class="hidden">
-      <input id="answer" placeholder="Your answer" required />
-      <button type="submit">Submit Answer</button>
-    </form>
+  <form id="vote-form" class="hidden">
+    <input id="vote" placeholder="Impostor username" required />
+    <button type="submit">Vote</button>
+  </form>
 
-    <form id="vote-form" class="hidden">
-      <input id="vote" placeholder="Vote for impostor" required />
-      <button type="submit">Vote</button>
-    </form>
+  <div id="result"></div>
+</div>
 
-    <div id="message-box" class="hidden"></div>
-    <div id="answers"></div>
-    <div id="result"></div>
-  </div>
 
   <script type="module" src="main.js"></script>
 </body>
